@@ -1,0 +1,9 @@
+[package]
+name = "findschemajson"
+version = "0.1.0"
+authors = ["Jordi Carrillo <jordilin@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+boss = { git = "https://github.com/jordilin/boss.git" }
+serde_json = "1.0"
