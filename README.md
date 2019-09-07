@@ -26,6 +26,15 @@ analyze this data. The string ```hi there``` cannot be cast to a
 number. The tool has very good performance but it can degrade as the
 number of keys passed to the tool increases.
 
+## Compilation
+
+Make sure you have the rust compiler and cargo installed. Otherwise,
+follow the instructions in https://www.rust-lang.org/tools/install
+
+```bash
+cargo build --release
+```
+
 ## License
 
 This project is licensed under either of
