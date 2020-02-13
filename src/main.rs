@@ -14,44 +14,51 @@ struct Data {
 }
 
 fn process_line(data: Data) -> Vec<Option<KeyType>> {
-    let v: Value = serde_json::from_str(&data.line).unwrap();
+    let vl: std::result::Result<Value, serde_json::error::Error> = serde_json::from_str(&data.line);
     let mut vr = Vec::new();
-    for k in &data.keys {
-        let randkey = &v[k];
-        let mut kt = KeyType {
-            key: k.to_string(),
-            vtype: VType::Null,
-        };
-        let mut res: Option<KeyType> = None;
-        match randkey {
-            // String or String cast'able to a number
-            Value::String(s) => {
-                if s.parse::<f32>().is_ok() {
-                    kt.vtype = VType::CastableStringToNumber;
-                } else {
-                    kt.vtype = VType::String;
+    match vl {
+        Ok(v) => {
+            for k in &data.keys {
+                let randkey = &v[k];
+                let mut kt = KeyType {
+                    key: k.to_string(),
+                    vtype: VType::Null,
+                };
+                let mut res: Option<KeyType> = None;
+                match randkey {
+                    // String or String cast'able to a number
+                    Value::String(s) => {
+                        if s.parse::<f32>().is_ok() {
+                            kt.vtype = VType::CastableStringToNumber;
+                        } else {
+                            kt.vtype = VType::String;
+                        }
+                        res = Some(kt);
+                    }
+                    Value::Number(_) => {
+                        kt.vtype = VType::Number;
+                        res = Some(kt);
+                    }
+                    Value::Array(_) => {
+                        kt.vtype = VType::Array;
+                        res = Some(kt);
+                    }
+                    Value::Bool(_) => {
+                        kt.vtype = VType::Bool;
+                        res = Some(kt);
+                    }
+                    Value::Object(_) => {
+                        kt.vtype = VType::JSON;
+                        res = Some(kt);
+                    }
+                    _ => (),
                 }
-                res = Some(kt);
+                vr.push(res);
             }
-            Value::Number(_) => {
-                kt.vtype = VType::Number;
-                res = Some(kt);
-            }
-            Value::Array(_) => {
-                kt.vtype = VType::Array;
-                res = Some(kt);
-            }
-            Value::Bool(_) => {
-                kt.vtype = VType::Bool;
-                res = Some(kt);
-            }
-            Value::Object(_) => {
-                kt.vtype = VType::JSON;
-                res = Some(kt);
-            }
-            _ => (),
         }
-        vr.push(res)
+        Err(_) => {
+            // Print it, for further evaluation.
+        }
     }
     vr
 }
