@@ -1,11 +1,15 @@
-use boss::CSPStreamWorkerPool;
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fmt;
 use std::io;
 use std::io::prelude::*;
-use std::thread;
+use std::{
+    collections::{HashMap, HashSet},
+    io::BufReader,
+};
+
+use rayon::prelude::*;
+use std::sync::mpsc::channel;
 
 #[derive(Clone)]
 struct Data {
@@ -96,20 +100,44 @@ impl fmt::Display for VType {
 
 fn main() {
     let stdin = io::stdin();
+    let input = BufReader::new(stdin);
     let mut types: HashMap<String, HashSet<VType>> = HashMap::new();
-    let boss = CSPStreamWorkerPool::new(None, Some(50_000), process_line);
     let keys: Vec<_> = env::args().skip(1).collect();
-    let rv = boss.clone();
-    thread::spawn(move || {
-        for line in stdin.lock().lines() {
-            boss.send_data(Data {
-                line: line.unwrap(),
+    let (sender, receiver) = channel();
+    // provide several functions - type keys, different keys, etc... depending on args
+    // and pass it over to the mapper below.
+    mapper(input, keys, sender);
+    reducer(receiver, &mut types);
+    // Display results
+    // Do something in here at some point
+    display(types);
+}
+
+fn mapper(
+    input: BufReader<io::Stdin>,
+    keys: Vec<String>,
+    sender: std::sync::mpsc::Sender<Vec<Option<KeyType>>>,
+) {
+    input
+        .lines()
+        .map(Result::unwrap)
+        .par_bridge()
+        .map(|line| {
+            // TODO pass process_line as a parameter - accept any function
+            // that can process data
+            process_line(Data {
+                line: line.clone(),
                 keys: keys.to_owned(),
-            });
-        }
-        boss.finish();
-    });
-    for r in rv {
+            })
+        })
+        .for_each_with(sender, |s, k| s.send(k).unwrap());
+}
+
+fn reducer(
+    receiver: std::sync::mpsc::Receiver<Vec<Option<KeyType>>>,
+    types: &mut HashMap<String, HashSet<VType>>,
+) {
+    for r in receiver {
         for okt in r {
             if let Some(kt) = okt {
                 let e = types.entry(kt.key).or_insert_with(HashSet::new);
@@ -117,8 +145,10 @@ fn main() {
             }
         }
     }
-    // Display results
-    for (key, vtype) in &types {
+}
+
+fn display(types: HashMap<String, HashSet<VType>>) {
+    for (key, vtype) in types {
         println!("{}: {:?}", key, vtype);
     }
 }
