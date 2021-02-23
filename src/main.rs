@@ -8,7 +8,6 @@ use std::{
     io::BufReader,
 };
 
-use rayon::prelude::*;
 use std::sync::mpsc::channel;
 
 #[derive(Clone)]
@@ -121,7 +120,6 @@ fn mapper(
     input
         .lines()
         .map(Result::unwrap)
-        .par_bridge()
         .map(|line| {
             // TODO pass process_line as a parameter - accept any function
             // that can process data
@@ -130,7 +128,7 @@ fn mapper(
                 keys: keys.to_owned(),
             })
         })
-        .for_each_with(sender, |s, k| s.send(k).unwrap());
+        .for_each(|k| sender.send(k).unwrap());
 }
 
 fn reducer(
